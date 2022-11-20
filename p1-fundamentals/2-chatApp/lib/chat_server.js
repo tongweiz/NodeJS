@@ -2,8 +2,8 @@ let socketio = require('socket.io');
 let io;
 let guestNumber = 1;
 let nickNames = {};
-let namesUsed = [];
 let currentRoom = {};
+let namesUsed = [];
 
 exports.listen = function (server) {
   io = socketio.listen(server);
@@ -65,7 +65,7 @@ function handleNameChangeAttempts(socket, nickNames, namesUsed) {
         success: false,
         message: 'Names cannot begin with "Guest".'
       });
-    } 
+    }
     else {
       if (namesUsed.indexOf(name) == -1) {
         var previousName = nickNames[socket.id];
@@ -87,5 +87,29 @@ function handleNameChangeAttempts(socket, nickNames, namesUsed) {
         });
       }
     }
+  });
+}
+
+// Chat Messages
+function handleMessageBroadcasting(socket) {
+  socket.on('message', function (message) {
+    socket.broadcast.to(message.room).emit('message', {
+      text: nickNames[socket.id] + ': ' + message.text
+    });
+  });
+}
+
+function handleRoomJoining(socket) {
+  socket.on('join', function (room) {
+    socket.leave(currentRoom[socket.id]);
+    joinRoom(socket, room.newRoom);
+  });
+}
+
+function handleClientDisconnection(socket) {
+  socket.on('disconnect', function () {
+    var nameIndex = namesUsed.indexOf(nickNames[socket.id]);
+    delete namesUsed[nameIndex];
+    delete nickNames[socket.id];
   });
 }
